@@ -18,14 +18,14 @@ password = p + '\r'
 # Do you wish to continue [Y|N]
 # This is a mixture of valid and invalid commands.  Future iterations should only have probable valid commands.
 listOfCommands = ['Y\r', 
-				'show system\r',
+		'show system\r',
                 'show access-port access-1-1-1-1\r',
                 'show access-port access-1-1-1-2\r',
-                        'show access-port access-1-1-1-3\r',
-                        'show access-port access-1-1-1-8\r',
-                        'show flow flow-1-1-1-1-1\r',
-                        'show flow flow-1-1-1-1-6\r',
-                        'logout\r']
+                'show access-port access-1-1-1-3\r',
+                'show access-port access-1-1-1-8\r',
+                'show flow flow-1-1-1-1-1\r',
+                'show flow flow-1-1-1-1-6\r',
+                'logout\r']
 
 with open('listOfIPs.txt') as IPAddresses:
         for IP in IPAddresses:
