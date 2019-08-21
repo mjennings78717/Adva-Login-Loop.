@@ -57,7 +57,7 @@ with open('listOfIPs.txt') as IPAddresses:
                 try:
                         response = child.expect(['-->'])
                 except:
-                        print("Took out do you wish to coninue part.")
+                        print("Took out do you wish to continue part.")
                 if response == 0:
 
 
