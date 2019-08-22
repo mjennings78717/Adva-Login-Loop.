@@ -14,73 +14,78 @@ p=getpass.getpass("Password: ")
 # make the password with a carriage return
 password = p + '\r'
 
-# Here is a list of commands.  I'm unable to figure out how to deal with 
-# Do you wish to continue [Y|N]
-# This is a mixture of valid and invalid commands.  Future iterations should only have probable valid commands.
-listOfCommands = ['Y\r', 
-		'show system\r',
-                'show access-port access-1-1-1-1\r',
-                'show access-port access-1-1-1-2\r',
-                'show access-port access-1-1-1-3\r',
-                'show access-port access-1-1-1-8\r',
-                'show flow flow-1-1-1-1-1\r',
-                'show flow flow-1-1-1-1-6\r',
-                'logout\r']
+listOfCommands = ['show system\r', 
+			'show access-port access-1-1-1-1\r', 
+			'show access-port access-1-1-1-2\r', 
+			'show access-port access-1-1-1-3\r', 
+			'show access-port access-1-1-1-8\r', 
+			'show flow flow-1-1-1-1-1\r',
+			'show flow flow-1-1-1-1-6\r',
+			'logout\r']
 
 with open('listOfIPs.txt') as IPAddresses:
-        for IP in IPAddresses:
-                # Create a dynamic file name composed of the CPE
-                # and the time down to the second.
-                IP = IP.strip()
-                fileName = "CPE" + IP  + "TIME" + str(time.strftime('%m%d%Y%H%M%S'))
+	# in case you enter the wrong username and password combination
+	failedPasswordAttempts = 0
+	for IP in IPAddresses:
+		# if you have received three failed password attempts, STOP going through the loop.
+		if failedPasswordAttempts > 3:
+			print("Your password isn't working.  Stopping the loop.")
+			break;
+		# Create a dynamic file name composed of the CPE 
+		# and the time down to the second.
+		IP = IP.strip()
+		fileName = "CPE" + IP  + "TIME" + str(time.strftime('%m%d%Y%H%M%S'))
 
-                # prepare ssh command without accepting keys with the provided username and password
-                openHostCommand = "ssh -oStrictHostKeyChecking=no " + user + '@' + IP
+		# prepare ssh command without accepting keys with the provided username and password
+		openHostCommand = "ssh -oStrictHostKeyChecking=no " + user + '@' + IP
 
-                print(openHostCommand)
-                # Open a ssh session to the IP address and send the password
-                child = pexpect.spawn(openHostCommand)
-                response = ""
-                try:
-                        response = child.expect(['assword: ', 'No route to host', '[Y|N]-->' ])
-                except:
-                        print("Failed to have feedback.")
-                        continue;
-                print(response)
-                # Open a file handle based on CPE IP address and current time
-                if response == 0:
-                        child.sendline(password)
-                        fout = open(fileName, 'wb')
-                        child.logfile = fout
-                # send commands to Adva from list of commands
-                response = ""
-                try:
-                        response = child.expect(['-->'])
-                except:
-                        print("Took out do you wish to continue part.")
-                if response == 0:
+		print(openHostCommand)
+		# Open a ssh session to the IP address and send the password
+		child = pexpect.spawn(openHostCommand)
+		response = ""
+		try:
+			response = child.expect(['assword: ', 'No route to host', 'you wish to continue'])
+		except:
+			print("Failed to have feedback.")
+			continue;
+		print(response)
+		# Open a file handle based on CPE IP address and current time
+		if response == 0:
+			child.sendline(password)
+			fout = open(fileName, 'wb')
+			child.logfile = fout
+		# let's see if we're ready to send commands of if we need to continue or bail out of the login attempt. 
+		response = ""
+		try:
+			response = child.expect(['-->', 'you wish to continue', 'Permission denied, please try again'])
+		except:
+			print("Something happened after sending the password.")		
+		if response == 2:
+			print("Your password to " + IP + " didn't work.  Moving to the next IP address.")
+			# sending a control-C to close the connection to the device.
+			child.send('\003')
+			failedPasswordAttempts += 1
+		elif response == 1:
+			# Respond Y to "Do you wish to continue [Y|N]"
+			child.sendline('Y\r')
+			# Set up the script to look for the CPE prompt this time.
+			response = ""
+			try:
+				response = child.expect(['-->', 'you wish to continue'])
+			except:
+				print("Something else happened.")		
 
-
-                        child.sendline(password)
-                        fout = open(fileName, 'wb')
-                        child.logfile = fout
-                # send commands to Adva from list of commands
-                response = ""
-                try:
-                        response = child.expect(['-->'])
-                except:
-                        print("Took out do you wish to continue part.")
-                if response == 0:
-                        # run through the list of commands
-                        print("I'm right above the command loop.")
-                        for command in listOfCommands:
-                                child.sendline(command + '\r')
-                                print("sent " + command + '\r')
-                                time.sleep(0.1)
-                                child.expect('-->')
-                # Move onto the next device.
-                child.expect(pexpect.EOF, timeout=None)
-                #close out the pexpect script.
-                child.close()
-                print("Reached closed.")
+		if response == 0:
+			# run through the list of commands
+			print("I'm right above the command loop.")
+			for command in listOfCommands:
+				child.sendline(command + '\r')
+				print("sent " + command + '\r')
+				time.sleep(0.1)
+				child.expect('-->')				
+		# Move onto the next device.
+		child.expect(pexpect.EOF, timeout=None)
+		#close out the pexpect script.
+		child.close()
+		print("Reached closed.")
 sys.exit()
